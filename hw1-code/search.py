@@ -209,7 +209,7 @@ def astar_multi(maze):
 def heuristic_fast(a, b_list):
     if len(b_list) == 0:
         return 0
-    return 5 * min([manhattan_distance(a, b) for b in b_list])
+    return min([manhattan_distance(a, b) for b in b_list])
 
 def fast(maze):
     """
@@ -224,24 +224,24 @@ def fast(maze):
     visited = set()
     objs = maze.getObjectives()
     start = maze.getStart()
-    state_set.add((start, heuristic_fast(start, objs), 0, tuple(objs)))
+    state_set.add((start, heuristic_fast(start, objs), tuple(objs)))
     astarpath = {}
     while state_set:
-        state = min(state_set, key=lambda x: x[1] + x[2])
+        state = min(state_set, key=lambda x: x[1])
         state_set.remove(state)
-        if state[3] == ():
+        if state[2] == ():
             break
-        visited.add((state[0], state[3]))
+        visited.add((state[0], state[2]))
         for i in maze.getNeighbors(state[0][0], state[0][1]):
-            tmp_objs = list(state[3])
+            tmp_objs = list(state[2])
             if i in tmp_objs:
                 tmp_objs.remove(i)
-            s = (i, heuristic_fast(i, tmp_objs), state[2] + 1, tuple(tmp_objs))
-            if (s[0], s[3]) not in visited:
+            s = (i, heuristic_fast(i, tmp_objs), tuple(tmp_objs))
+            if (s[0], s[2]) not in visited:
                 state_set.add(s)
                 astarpath[s] = state
     path = []
-    while state != (start, heuristic_fast(start, objs), 0, tuple(objs)):
+    while state != (start, heuristic_fast(start, objs), tuple(objs)):
         path.append(state[0])
         state = astarpath[state]
     path.append(start)

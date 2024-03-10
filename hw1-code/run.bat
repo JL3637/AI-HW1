@@ -1,1 +1,1 @@
-python hw1.py ./maps/multi/tinySearch.txt --method astar_multi --scale 30
+python hw1.py ./maps/multi/mediumSearch.txt --method fast --scale 10
