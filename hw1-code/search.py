@@ -19,6 +19,8 @@ files and classes when code is run, so be careful to not modify anything else.
 # maze is a Maze object based on the maze from the file specified by input filename
 # searchMethod is the search method specified by --method flag (bfs,dfs,astar,astar_multi,fast)
 
+import queue
+
 def search(maze, searchMethod):
     return {
         "bfs": bfs,
@@ -37,8 +39,39 @@ def bfs(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
-    return []
+    q = queue.Queue()
+    visited = set()
+    bfspath = {}
+    objs = maze.getObjectives()
+    state = (maze.getStart(), tuple(objs))
+    q.put(state)
+    while not q.empty():
+        state = q.get()
+        if state[1] == ():
+            break
+        visited.add(state)
+        c, r = state[0]
+        for i in maze.getNeighbors(c, r):
+            tmp_objs = list(state[1])
+            if i in tmp_objs:
+                tmp_objs.remove(i)
+            s = (i, tuple(tmp_objs))
+            if s not in visited and s not in list(q.queue):
+                q.put(s)
+                bfspath[s] = state
+    path = []
+    while state != (maze.getStart(), tuple(objs)):
+        path.append(state[0])
+        state = bfspath[state]
+    path.append(maze.getStart())
+    path.reverse()
+    # print(path)
+    print(maze.isValidPath(path))
 
+    return path
+
+def manhattan_distance(a, b):
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 def astar(maze):
     """
@@ -49,7 +82,40 @@ def astar(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
-    return []
+    state_set = set()
+    visited = set()
+    obj = maze.getObjectives()[0]
+    start = maze.getStart()
+    state_set.add((start, manhattan_distance(start, obj), 0))
+    astarpath = {}
+    while state_set:
+        state = min(state_set, key=lambda x: x[1] + x[2])
+        state_set.remove(state)
+        if state[0] == obj:
+            break
+        visited.add(state[0])
+        for i in maze.getNeighbors(state[0][0], state[0][1]):
+            if i not in visited and i not in [x[0] for x in state_set]:
+                state_set.add((i, manhattan_distance(i, obj), state[2] + 1))
+                astarpath[(i, manhattan_distance(i, obj), state[2] + 1)] = state
+    path = []
+    while state != (start, manhattan_distance(start, obj), 0):
+        path.append(state[0])
+        state = astarpath[state]
+    path.append(start)
+    path.reverse()
+    # print(path)
+    print(maze.isValidPath(path))
+
+    return path
+
+def heuristic_corner(a, b_list):
+    tmp = b_list.copy()
+    if len(tmp) == 0:
+        return 0
+    b_min = min(tmp, key=lambda b: manhattan_distance(a, b))
+    tmp.remove(b_min)
+    return manhattan_distance(a, b_min) + heuristic_corner(b_min, tmp)
 
 def astar_corner(maze):
     """
@@ -60,7 +126,44 @@ def astar_corner(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
         """
     # TODO: Write your code here
-    return []
+    state_set = set()
+    visited = set()
+    objs = maze.getObjectives()
+    start = maze.getStart()
+    state_set.add((start, heuristic_corner(start, objs), 0, tuple(objs)))
+    astarpath = {}
+    while state_set:
+        state = min(state_set, key=lambda x: x[1] + x[2])
+        state_set.remove(state)
+        if state[3] == ():
+            break
+        visited.add((state[0], state[3]))
+        for i in maze.getNeighbors(state[0][0], state[0][1]):
+            tmp_objs = list(state[3])
+            if i in tmp_objs:
+                tmp_objs.remove(i)
+            s = (i, heuristic_corner(i, tmp_objs), state[2] + 1, tuple(tmp_objs))
+            if (s[0], s[3]) not in visited:
+                state_set.add(s)
+                astarpath[s] = state
+    path = []
+    while state != (start, heuristic_corner(start, objs), 0, tuple(objs)):
+        path.append(state[0])
+        state = astarpath[state]
+    path.append(start)
+    path.reverse()
+    # print(path)
+    print(maze.isValidPath(path))
+
+    return path
+
+def heuristic_multi(a, b_list):
+    tmp = b_list.copy()
+    if len(tmp) == 0:
+        return 0
+    b_min = min(tmp, key=lambda b: manhattan_distance(a, b))
+    tmp.remove(b_min)
+    return manhattan_distance(a, b_min) + heuristic_corner(b_min, tmp)
 
 def astar_multi(maze):
     """
@@ -72,8 +175,41 @@ def astar_multi(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
-    return []
+    state_set = set()
+    visited = set()
+    objs = maze.getObjectives()
+    start = maze.getStart()
+    state_set.add((start, heuristic_multi(start, objs), 0, tuple(objs)))
+    astarpath = {}
+    while state_set:
+        state = min(state_set, key=lambda x: x[1] + x[2])
+        state_set.remove(state)
+        if state[3] == ():
+            break
+        visited.add((state[0], state[3]))
+        for i in maze.getNeighbors(state[0][0], state[0][1]):
+            tmp_objs = list(state[3])
+            if i in tmp_objs:
+                tmp_objs.remove(i)
+            s = (i, heuristic_multi(i, tmp_objs), state[2] + 1, tuple(tmp_objs))
+            if (s[0], s[3]) not in visited:
+                state_set.add(s)
+                astarpath[s] = state
+    path = []
+    while state != (start, heuristic_multi(start, objs), 0, tuple(objs)):
+        path.append(state[0])
+        state = astarpath[state]
+    path.append(start)
+    path.reverse()
+    # print(path)
+    print(maze.isValidPath(path))
 
+    return path
+
+def heuristic_fast(a, b_list):
+    if len(b_list) == 0:
+        return 0
+    return 5 * min([manhattan_distance(a, b) for b in b_list])
 
 def fast(maze):
     """
@@ -84,4 +220,33 @@ def fast(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
-    return []
+    state_set = set()
+    visited = set()
+    objs = maze.getObjectives()
+    start = maze.getStart()
+    state_set.add((start, heuristic_fast(start, objs), 0, tuple(objs)))
+    astarpath = {}
+    while state_set:
+        state = min(state_set, key=lambda x: x[1] + x[2])
+        state_set.remove(state)
+        if state[3] == ():
+            break
+        visited.add((state[0], state[3]))
+        for i in maze.getNeighbors(state[0][0], state[0][1]):
+            tmp_objs = list(state[3])
+            if i in tmp_objs:
+                tmp_objs.remove(i)
+            s = (i, heuristic_fast(i, tmp_objs), state[2] + 1, tuple(tmp_objs))
+            if (s[0], s[3]) not in visited:
+                state_set.add(s)
+                astarpath[s] = state
+    path = []
+    while state != (start, heuristic_fast(start, objs), 0, tuple(objs)):
+        path.append(state[0])
+        state = astarpath[state]
+    path.append(start)
+    path.reverse()
+    # print(path)
+    print(maze.isValidPath(path))
+
+    return path
