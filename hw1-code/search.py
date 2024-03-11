@@ -95,7 +95,7 @@ def astar(maze):
             break
         visited.add(state[0])
         for i in maze.getNeighbors(state[0][0], state[0][1]):
-            if i not in visited and i not in [x[0] for x in state_set]:
+            if i not in visited:
                 state_set.add((i, manhattan_distance(i, obj), state[2] + 1))
                 astarpath[(i, manhattan_distance(i, obj), state[2] + 1)] = state
     path = []
@@ -105,7 +105,7 @@ def astar(maze):
     path.append(start)
     path.reverse()
     # print(path)
-    print(maze.isValidPath(path))
+    # print(maze.isValidPath(path))
 
     return path
 
@@ -157,13 +157,17 @@ def astar_corner(maze):
 
     return path
 
+# def heuristic_multi(a, b_list):
+#     if len(b_list) == 0:
+#         return 0
+#     b_min = min(b_list, key=lambda b: manhattan_distance(a, b))
+#     b_max = max(b_list, key=lambda b: manhattan_distance(a, b))
+#     return manhattan_distance(a, b_min) + manhattan_distance(b_min, b_max)
+
 def heuristic_multi(a, b_list):
-    tmp = b_list.copy()
-    if len(tmp) == 0:
+    if len(b_list) == 0:
         return 0
-    b_min = min(tmp, key=lambda b: manhattan_distance(a, b))
-    tmp.remove(b_min)
-    return manhattan_distance(a, b_min) + heuristic_corner(b_min, tmp)
+    return max([manhattan_distance(a, b) for b in b_list])
 
 def astar_multi(maze):
     """
@@ -206,11 +210,6 @@ def astar_multi(maze):
 
     return path
 
-def heuristic_fast(a, b_list):
-    if len(b_list) == 0:
-        return 0
-    return min([manhattan_distance(a, b) for b in b_list])
-
 def fast(maze):
     """
     Runs suboptimal search algorithm for part 4.
@@ -220,33 +219,27 @@ def fast(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
-    state_set = set()
-    visited = set()
     objs = maze.getObjectives()
+    objs_r = objs.copy()
     start = maze.getStart()
-    state_set.add((start, heuristic_fast(start, objs), tuple(objs)))
-    astarpath = {}
-    while state_set:
-        state = min(state_set, key=lambda x: x[1])
-        state_set.remove(state)
-        if state[2] == ():
-            break
-        visited.add((state[0], state[2]))
-        for i in maze.getNeighbors(state[0][0], state[0][1]):
-            tmp_objs = list(state[2])
-            if i in tmp_objs:
-                tmp_objs.remove(i)
-            s = (i, heuristic_fast(i, tmp_objs), tuple(tmp_objs))
-            if (s[0], s[2]) not in visited:
-                state_set.add(s)
-                astarpath[s] = state
-    path = []
-    while state != (start, heuristic_fast(start, objs), tuple(objs)):
-        path.append(state[0])
-        state = astarpath[state]
-    path.append(start)
-    path.reverse()
-    # print(path)
+    cur = start
+    path = [cur]
+    while objs:
+        neighbors = maze.getNeighbors(cur[0], cur[1])
+        intersect = [i for i in neighbors if i in objs]
+        if intersect:
+            cur = intersect[0]
+            path.append(cur)
+            objs.remove(cur)
+        else:
+            closest_dot = min(objs, key=lambda x: manhattan_distance(cur, x))
+            maze.setObjectives([closest_dot])
+            maze.setStart(cur)
+            sub_path = astar(maze)
+            path += sub_path[1:]
+            cur = sub_path[-1]
+            objs.remove(cur)
+    maze.setStart(start)
+    maze.setObjectives(objs_r)
     print(maze.isValidPath(path))
-
     return path
