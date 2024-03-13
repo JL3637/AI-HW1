@@ -20,6 +20,7 @@ files and classes when code is run, so be careful to not modify anything else.
 # searchMethod is the search method specified by --method flag (bfs,dfs,astar,astar_multi,fast)
 
 import queue
+import time
 
 def search(maze, searchMethod):
     return {
@@ -157,17 +158,13 @@ def astar_corner(maze):
 
     return path
 
-# def heuristic_multi(a, b_list):
-#     if len(b_list) == 0:
-#         return 0
-#     b_min = min(b_list, key=lambda b: manhattan_distance(a, b))
-#     b_max = max(b_list, key=lambda b: manhattan_distance(a, b))
-#     return manhattan_distance(a, b_min) + manhattan_distance(b_min, b_max)
-
 def heuristic_multi(a, b_list):
     if len(b_list) == 0:
         return 0
-    return max([manhattan_distance(a, b) for b in b_list])
+    b_min = min(b_list, key=lambda b: manhattan_distance(a, b))
+    b_max = max(b_list, key=lambda b: manhattan_distance(b_min, b))
+    return manhattan_distance(a, b_min) + manhattan_distance(b_min, b_max)
+
 
 def astar_multi(maze):
     """
@@ -185,7 +182,10 @@ def astar_multi(maze):
     start = maze.getStart()
     state_set.add((start, heuristic_multi(start, objs), 0, tuple(objs)))
     astarpath = {}
+    start_time = time.time()
+    cnt = 0
     while state_set:
+        cnt += 1
         state = min(state_set, key=lambda x: x[1] + x[2])
         state_set.remove(state)
         if state[3] == ():
@@ -199,6 +199,10 @@ def astar_multi(maze):
             if (s[0], s[3]) not in visited:
                 state_set.add(s)
                 astarpath[s] = state
+        if cnt % 1000 == 0:
+            print(cnt)
+    end_time = time.time()
+    print(end_time - start_time)
     path = []
     while state != (start, heuristic_multi(start, objs), 0, tuple(objs)):
         path.append(state[0])
