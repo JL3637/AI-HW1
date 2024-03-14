@@ -20,6 +20,7 @@ files and classes when code is run, so be careful to not modify anything else.
 # searchMethod is the search method specified by --method flag (bfs,dfs,astar,astar_multi,fast)
 
 import queue
+import heapq
 import time
 
 def search(maze, searchMethod):
@@ -45,19 +46,20 @@ def bfs(maze):
     bfspath = {}
     objs = maze.getObjectives()
     state = (maze.getStart(), tuple(objs))
+    visited.add(state)
     q.put(state)
     while not q.empty():
         state = q.get()
         if state[1] == ():
             break
-        visited.add(state)
         c, r = state[0]
         for i in maze.getNeighbors(c, r):
             tmp_objs = list(state[1])
             if i in tmp_objs:
                 tmp_objs.remove(i)
             s = (i, tuple(tmp_objs))
-            if s not in visited and s not in list(q.queue):
+            if s not in visited:
+                visited.add(s)
                 q.put(s)
                 bfspath[s] = state
     path = []
@@ -66,7 +68,6 @@ def bfs(maze):
         state = bfspath[state]
     path.append(maze.getStart())
     path.reverse()
-    # print(path)
     print(maze.isValidPath(path))
 
     return path
@@ -83,30 +84,31 @@ def astar(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
-    state_set = set()
+    state_queue = []
+    heapq.heapify(state_queue)
     visited = set()
     obj = maze.getObjectives()[0]
     start = maze.getStart()
-    state_set.add((start, manhattan_distance(start, obj), 0))
+    a = (manhattan_distance(start, obj), 0, start)
+    visited.add(start)
+    heapq.heappush(state_queue, a)
     astarpath = {}
-    while state_set:
-        state = min(state_set, key=lambda x: x[1] + x[2])
-        state_set.remove(state)
-        if state[0] == obj:
+    while state_queue:
+        state = heapq.heappop(state_queue)
+        if state[2] == obj:
             break
-        visited.add(state[0])
-        for i in maze.getNeighbors(state[0][0], state[0][1]):
+        for i in maze.getNeighbors(state[2][0], state[2][1]):
             if i not in visited:
-                state_set.add((i, manhattan_distance(i, obj), state[2] + 1))
-                astarpath[(i, manhattan_distance(i, obj), state[2] + 1)] = state
+                visited.add(i)
+                s = (manhattan_distance(i, obj) + state[1] + 1, state[1] + 1, i)
+                heapq.heappush(state_queue, s)
+                astarpath[s] = state
     path = []
-    while state != (start, manhattan_distance(start, obj), 0):
-        path.append(state[0])
+    while state != (manhattan_distance(start, obj), 0, start):
+        path.append(state[2])
         state = astarpath[state]
     path.append(start)
     path.reverse()
-    # print(path)
-    # print(maze.isValidPath(path))
 
     return path
 
@@ -127,29 +129,31 @@ def astar_corner(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
         """
     # TODO: Write your code here
-    state_set = set()
+    state_queue = []
+    heapq.heapify(state_queue)
     visited = set()
     objs = maze.getObjectives()
     start = maze.getStart()
-    state_set.add((start, heuristic_corner(start, objs), 0, tuple(objs)))
+    a = (heuristic_corner(start, objs), 0, start, tuple(objs))
+    visited.add((a[2], a[3]))
+    heapq.heappush(state_queue, a)
     astarpath = {}
-    while state_set:
-        state = min(state_set, key=lambda x: x[1] + x[2])
-        state_set.remove(state)
+    while state_queue:
+        state = heapq.heappop(state_queue)
         if state[3] == ():
             break
-        visited.add((state[0], state[3]))
-        for i in maze.getNeighbors(state[0][0], state[0][1]):
+        for i in maze.getNeighbors(state[2][0], state[2][1]):
             tmp_objs = list(state[3])
             if i in tmp_objs:
                 tmp_objs.remove(i)
-            s = (i, heuristic_corner(i, tmp_objs), state[2] + 1, tuple(tmp_objs))
-            if (s[0], s[3]) not in visited:
-                state_set.add(s)
+            s = (heuristic_corner(i, tmp_objs) + state[1] + 1, state[1] + 1, i, tuple(tmp_objs))
+            if (s[2], s[3]) not in visited:
+                visited.add((s[2], s[3]))
+                heapq.heappush(state_queue, s)
                 astarpath[s] = state
     path = []
-    while state != (start, heuristic_corner(start, objs), 0, tuple(objs)):
-        path.append(state[0])
+    while state != (heuristic_corner(start, objs), 0, start, tuple(objs)):
+        path.append(state[2])
         state = astarpath[state]
     path.append(start)
     path.reverse()
@@ -176,36 +180,31 @@ def astar_multi(maze):
     @return path: a list of tuples containing the coordinates of each state in the computed path
     """
     # TODO: Write your code here
-    state_set = set()
+    state_queue = []
+    heapq.heapify(state_queue)
     visited = set()
     objs = maze.getObjectives()
     start = maze.getStart()
-    state_set.add((start, heuristic_multi(start, objs), 0, tuple(objs)))
+    a = (heuristic_multi(start, objs), 0, start, tuple(objs))
+    visited.add((a[2], a[3]))
+    heapq.heappush(state_queue, a)
     astarpath = {}
-    start_time = time.time()
-    cnt = 0
-    while state_set:
-        cnt += 1
-        state = min(state_set, key=lambda x: x[1] + x[2])
-        state_set.remove(state)
+    while state_queue:
+        state = heapq.heappop(state_queue)
         if state[3] == ():
             break
-        visited.add((state[0], state[3]))
-        for i in maze.getNeighbors(state[0][0], state[0][1]):
+        for i in maze.getNeighbors(state[2][0], state[2][1]):
             tmp_objs = list(state[3])
             if i in tmp_objs:
                 tmp_objs.remove(i)
-            s = (i, heuristic_multi(i, tmp_objs), state[2] + 1, tuple(tmp_objs))
-            if (s[0], s[3]) not in visited:
-                state_set.add(s)
+            s = (heuristic_multi(i, tmp_objs) + state[1] + 1, state[1] + 1, i, tuple(tmp_objs))
+            if (s[2], s[3]) not in visited:
+                visited.add((s[2], s[3]))
+                heapq.heappush(state_queue, s)
                 astarpath[s] = state
-        if cnt % 1000 == 0:
-            print(cnt)
-    end_time = time.time()
-    print(end_time - start_time)
     path = []
-    while state != (start, heuristic_multi(start, objs), 0, tuple(objs)):
-        path.append(state[0])
+    while state != (heuristic_multi(start, objs), 0, start, tuple(objs)):
+        path.append(state[2])
         state = astarpath[state]
     path.append(start)
     path.reverse()
