@@ -45,15 +45,15 @@ def bfs(maze):
     visited = set()
     bfspath = {}
     objs = maze.getObjectives()
-    state = (maze.getStart(), tuple(objs))
-    visited.add(state)
-    q.put(state)
+    start = maze.getStart()
+    init_state = (start, tuple(objs))
+    visited.add(init_state)
+    q.put(init_state)
     while not q.empty():
         state = q.get()
         if state[1] == ():
             break
-        c, r = state[0]
-        for i in maze.getNeighbors(c, r):
+        for i in maze.getNeighbors(state[0][0], state[0][1]):
             tmp_objs = list(state[1])
             if i in tmp_objs:
                 tmp_objs.remove(i)
@@ -63,12 +63,11 @@ def bfs(maze):
                 q.put(s)
                 bfspath[s] = state
     path = []
-    while state != (maze.getStart(), tuple(objs)):
+    while state != init_state:
         path.append(state[0])
         state = bfspath[state]
     path.append(maze.getStart())
     path.reverse()
-    print(maze.isValidPath(path))
 
     return path
 
@@ -89,14 +88,15 @@ def astar(maze):
     visited = set()
     obj = maze.getObjectives()[0]
     start = maze.getStart()
-    a = (manhattan_distance(start, obj), 0, start)
+    init_state = (manhattan_distance(start, obj), 0, start)
     visited.add(start)
-    heapq.heappush(state_queue, a)
+    heapq.heappush(state_queue, init_state)
     astarpath = {}
     while state_queue:
         state = heapq.heappop(state_queue)
         if state[2] == obj:
             break
+        # visited.add(state[2])
         for i in maze.getNeighbors(state[2][0], state[2][1]):
             if i not in visited:
                 visited.add(i)
@@ -104,7 +104,7 @@ def astar(maze):
                 heapq.heappush(state_queue, s)
                 astarpath[s] = state
     path = []
-    while state != (manhattan_distance(start, obj), 0, start):
+    while state != init_state:
         path.append(state[2])
         state = astarpath[state]
     path.append(start)
@@ -134,14 +134,15 @@ def astar_corner(maze):
     visited = set()
     objs = maze.getObjectives()
     start = maze.getStart()
-    a = (heuristic_corner(start, objs), 0, start, tuple(objs))
-    visited.add((a[2], a[3]))
-    heapq.heappush(state_queue, a)
+    init_state = (heuristic_corner(start, objs), 0, start, tuple(objs))
+    visited.add((init_state[2], init_state[3]))
+    heapq.heappush(state_queue, init_state)
     astarpath = {}
     while state_queue:
         state = heapq.heappop(state_queue)
         if state[3] == ():
             break
+        # visited.add((state[2], state[3]))
         for i in maze.getNeighbors(state[2][0], state[2][1]):
             tmp_objs = list(state[3])
             if i in tmp_objs:
@@ -152,23 +153,72 @@ def astar_corner(maze):
                 heapq.heappush(state_queue, s)
                 astarpath[s] = state
     path = []
-    while state != (heuristic_corner(start, objs), 0, start, tuple(objs)):
+    while state != init_state:
         path.append(state[2])
         state = astarpath[state]
     path.append(start)
     path.reverse()
-    # print(path)
-    print(maze.isValidPath(path))
 
     return path
 
-def heuristic_multi(a, b_list):
+def find_parent(parent, node):
+    if parent[node] == node:
+        return node
+    parent[node] = find_parent(parent, parent[node])
+    return parent[node]
+
+def union(parent, rank, x, y):
+    x_root = find_parent(parent, x)
+    y_root = find_parent(parent, y)
+
+    if rank[x_root] < rank[y_root]:
+        parent[x_root] = y_root
+    elif rank[x_root] > rank[y_root]:
+        parent[y_root] = x_root
+    else:
+        parent[y_root] = x_root
+        rank[x_root] += 1
+
+def cal_mst(nodes, cost_table):
+    edges = []
+    n = len(nodes)
+    for i in range(n):
+        for j in range(i + 1, n):
+            edges.append((nodes[i], nodes[j], cost_table[(nodes[i], nodes[j])]))
+
+    edges.sort(key=lambda x: x[2])  # Sort edges by weight
+    parent = {node: node for node in nodes}
+    rank = {node: 0 for node in nodes}
+    total_weight = 0
+
+    for edge in edges:
+        node1, node2, weight = edge
+        if find_parent(parent, node1) != find_parent(parent, node2):
+            total_weight += weight
+            union(parent, rank, node1, node2)
+
+    return total_weight
+
+def heuristic_multi(a, b_list, mst_dict, cost_table):
     if len(b_list) == 0:
         return 0
-    b_min = min(b_list, key=lambda b: manhattan_distance(a, b))
-    b_max = max(b_list, key=lambda b: manhattan_distance(b_min, b))
-    return manhattan_distance(a, b_min) + manhattan_distance(b_min, b_max)
+    if tuple(b_list) not in mst_dict:
+        mst_dict[tuple(b_list)] = cal_mst(b_list, cost_table)
+    return min([manhattan_distance(a, b) for b in b_list]) + mst_dict[tuple(b_list)]
 
+def actual_cost_table(maze):
+    objs = maze.getObjectives()
+    start = maze.getStart()
+    cost_table = {}
+    n = len(objs)
+    for i in range(n):
+        for j in range(i + 1, n):
+            maze.setObjectives([objs[j]])
+            maze.setStart(objs[i])
+            cost_table[(objs[i], objs[j])] = len(astar(maze)) - 1
+    maze.setStart(start)
+    maze.setObjectives(objs)
+    return cost_table
 
 def astar_multi(maze):
     """
@@ -185,31 +235,33 @@ def astar_multi(maze):
     visited = set()
     objs = maze.getObjectives()
     start = maze.getStart()
-    a = (heuristic_multi(start, objs), 0, start, tuple(objs))
-    visited.add((a[2], a[3]))
-    heapq.heappush(state_queue, a)
+    cost_table = actual_cost_table(maze)
+    mst_dict = {}
+    mst_dict[tuple(objs)] = cal_mst(objs, cost_table)
+    init_state = (heuristic_multi(start, objs, mst_dict, cost_table), 0, start, tuple(objs))
+    visited.add((init_state[2], init_state[3]))
+    heapq.heappush(state_queue, init_state)
     astarpath = {}
     while state_queue:
         state = heapq.heappop(state_queue)
         if state[3] == ():
             break
+        # visited.add((state[2], state[3]))
         for i in maze.getNeighbors(state[2][0], state[2][1]):
             tmp_objs = list(state[3])
             if i in tmp_objs:
                 tmp_objs.remove(i)
-            s = (heuristic_multi(i, tmp_objs) + state[1] + 1, state[1] + 1, i, tuple(tmp_objs))
+            s = (heuristic_multi(i, tmp_objs, mst_dict, cost_table) + state[1] + 1, state[1] + 1, i, tuple(tmp_objs))
             if (s[2], s[3]) not in visited:
                 visited.add((s[2], s[3]))
                 heapq.heappush(state_queue, s)
                 astarpath[s] = state
     path = []
-    while state != (heuristic_multi(start, objs), 0, start, tuple(objs)):
+    while state != init_state:
         path.append(state[2])
         state = astarpath[state]
     path.append(start)
     path.reverse()
-    # print(path)
-    print(maze.isValidPath(path))
 
     return path
 
