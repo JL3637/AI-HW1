@@ -22,6 +22,7 @@ files and classes when code is run, so be careful to not modify anything else.
 import queue
 import heapq
 import time
+import itertools
 
 def search(maze, searchMethod):
     return {
@@ -90,16 +91,15 @@ def astar(maze):
     obj = maze.getObjectives()[0]
     start = maze.getStart()
     a = (manhattan_distance(start, obj), 0, start)
-    visited.add(start)
     heapq.heappush(state_queue, a)
     astarpath = {}
     while state_queue:
         state = heapq.heappop(state_queue)
         if state[2] == obj:
             break
+        visited.add(state[2])
         for i in maze.getNeighbors(state[2][0], state[2][1]):
             if i not in visited:
-                visited.add(i)
                 s = (manhattan_distance(i, obj) + state[1] + 1, state[1] + 1, i)
                 heapq.heappush(state_queue, s)
                 astarpath[s] = state
@@ -168,7 +168,6 @@ def heuristic_multi(a, b_list):
     b_min = min(b_list, key=lambda b: manhattan_distance(a, b))
     b_max = max(b_list, key=lambda b: manhattan_distance(b_min, b))
     return manhattan_distance(a, b_min) + manhattan_distance(b_min, b_max)
-
 
 def astar_multi(maze):
     """
