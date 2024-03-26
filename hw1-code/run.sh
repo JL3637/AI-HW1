@@ -1,1 +1,0 @@
-python3 hw1.py ./maps/multi/tinySearch.txt --scale 30 --fps 10 --human

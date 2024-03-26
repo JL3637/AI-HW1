@@ -1,0 +1,10 @@
+@REM python hw1.py ./maps/single/tinyMaze.txt --method astar --scale 10
+@REM python hw1.py ./maps/single/tinyMaze.txt --method bfs --scale 10
+@REM python hw1.py ./maps/single/smallMaze.txt --method astar --scale 10
+@REM python hw1.py ./maps/single/smallMaze.txt --method bfs --scale 10
+@REM python hw1.py ./maps/single/mediumMaze.txt --method astar --scale 10
+@REM python hw1.py ./maps/single/mediumMaze.txt --method bfs --scale 10
+@REM python hw1.py ./maps/single/bigMaze.txt --method astar --scale 10
+@REM python hw1.py ./maps/single/bigMaze.txt --method bfs --scale 10
+@REM python hw1.py ./maps/single/openMaze.txt --method astar --scale 10
+@REM python hw1.py ./maps/single/openMaze.txt --method bfs --scale 10
